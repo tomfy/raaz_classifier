@@ -87,8 +87,9 @@ sub BUILD {
 sub check{ # do some checks
 my $self = shift;
 my $n_leaves_ok = $self->n_leaves() == scalar keys %{$self->leaf_unikeys()};
-print STDERR "n leaves: ", $self->n_leaves(), "  ", scalar keys %{$self->leaf_unikeys()}, "\n";
+# print STDERR "n leaves: ", $self->n_leaves(), "  ", scalar keys %{$self->leaf_unikeys()}, "\n";
 my $OK = $n_leaves_ok;
+die "problem with n_leaves: ", $self->n_leaves(), "  ", scalar keys %{$self->leaf_unikeys()}, ".\n" if(!$n_leaves_ok);
 return $OK;
 }
 
@@ -120,7 +121,8 @@ sub mcmc_step_split{		# split a leaf chosen at random
   my $n_leaves = scalar @leaf_uks;
 
   #  my $runk = int (rand() * $n_leaves );
-  my $leaf_to_split = $self->unikey_node()->{$leaf_uks[int (rand() * $n_leaves )] };
+my $uk_to_split = $leaf_uks[int (rand() * $n_leaves )];
+  my $leaf_to_split = $self->unikey_node()->{$uk_to_split };
 
   my @joinable_uks = keys %{$self->joinable_unikeys()};
   my $n_joinable_back = scalar @joinable_uks;
@@ -128,7 +130,11 @@ sub mcmc_step_split{		# split a leaf chosen at random
   my $q_split = 1/$n_leaves;
   my $q_join_back= 1/$n_joinable_back;
 #  my $q_ratio_split_over_join = $q_split/$q_join;
-print STDERR "in mcmc_step_split. n leaves: $n_leaves, n joinable (back): $n_joinable_back \n";
+#print "before split. leaf_uks: ", join(", ", @leaf_uks), " uk to split: ", $uk_to_split, "\n";
+#print "before split. joinable_uks: ", join(", ", @joinable_uks), "\n";
+  #print "tree before split: ", $self->newick(), "\n";
+
+#print STDERR "in mcmc_step_split. n leaves: $n_leaves, n joinable (back): $n_joinable_back \n";
   $leaf_to_split->split_node($q_split/$q_join_back);
 }
 
@@ -138,11 +144,14 @@ sub mcmc_step_join{ # choose a joinable node (parent of two leaves) at random, a
 #  print STDERR "joinable uks: ", join(", ", @joinable_uks), "\n";
   my $n_joinable = scalar @joinable_uks;
   # choose one of the joinable nodes uniformly at random:
-  my $node_to_join = $self->unikey_node()->{$joinable_uks[int (rand() * $n_joinable )] };
+my $uk_to_join = $joinable_uks[int (rand() * $n_joinable )];
+  my $node_to_join = $self->unikey_node()->{$uk_to_join};
   my $q_join = 1/$n_joinable;
 my $n_leaves_back = $self->n_leaves() - 1; # number of leaves AFTER join (= possible splits at that point)
 my $q_split_back = 1/$n_leaves_back;
-print STDERR "in mcmc_step_join. n leaves (back): $n_leaves_back, n joinable: $n_joinable \n";
+#print STDERR "before join. joinable_uks: ", join(", ", @joinable_uks), "  uk to join: ", $uk_to_join, "\n";
+#print STDERR "tree before join: ", $self->newick(), "\n";
+#print STDERR "in mcmc_step_join. n leaves (back): $n_leaves_back, n joinable: $n_joinable \n";
 #my $q_ratio_join_over_split = $q_joinable/$q_split;
   $node_to_join->join_nodes($q_split_back/$q_join);
 }
