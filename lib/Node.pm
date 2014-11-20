@@ -113,100 +113,112 @@ sub split_node{			# create pair of nodes
   my $n = scalar @{$self->p_indices()};
   my $m_l = scalar @{$l_node->p_indices()};
   my $m_r =  scalar @{$r_node->p_indices()};
-my $N = $self->tree()->N();
-my $K = $self->tree()->n_leaves();
+  my $N = $self->tree()->N();
+  my $K = $self->tree()->n_leaves();
 
-# ratios are split over join
-my $pppr = pp_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
-  if($pppr >= $q_ratio or rand() < $pppr/$q_ratio){ # ACCEPT, and make the split.
+  # ratios are split over join
+  my $pppr = pp_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
+  if ($pppr >= $q_ratio or rand() < $pppr/$q_ratio) { # ACCEPT, and make the split.
     
-  print STDERR "split accepted. n_leaves post-split: ", $K+1, ". n, m, n-m: $n $m_l $m_r \n";
-
-  # connect new nodes to tree.
+ #   print STDERR "split accepted. n_leaves post-split: ", $K+1, ". n, m, n-m: $n $m_l $m_r \n";
+# print  "before split. tree: ", $self->tree()->newick(), ". spl-uks: ", join(",", keys %{$self->tree()->leaf_unikeys()}), "\n";
+    # connect new nodes to tree.
  
-  $self->left($l_node);		# make new nodes children of $self.
-  $self->right($r_node);
-  $l_node->parent($self);	# make $self parent of new nodes.
-  $r_node->parent($self);
-  $l_node->sibling($r_node);  # make new nodes siblings of each other.
-  $r_node->sibling($l_node);
+    $self->left($l_node);	# make new nodes children of $self.
+    $self->right($r_node);
+    $l_node->parent($self);	# make $self parent of new nodes.
+    $r_node->parent($self);
+    $l_node->sibling($r_node); # make new nodes siblings of each other.
+    $r_node->sibling($l_node);
 
-  $l_node->tree($tree); # make new nodes have same tree object as $self
-  $r_node->tree($tree);
+    $l_node->tree($tree); # make new nodes have same tree object as $self
+    $r_node->tree($tree);
 
-  # get a unique key for each of the new nodes, and
-  my $L_unikey = $self->unique_key() * 2;
-  my $R_unikey = $L_unikey + 1;
-  $l_node->unique_key($L_unikey);
-  $r_node->unique_key($R_unikey);
-  $tree->unikey_node()->{$L_unikey} = $l_node;
-  $tree->unikey_node()->{$R_unikey} = $r_node;
-  $tree->leaf_unikeys()->{$L_unikey} = 1;
-  $tree->leaf_unikeys()->{$R_unikey} = 1;
+    # get a unique key for each of the new nodes, and
+    my $L_unikey = $self->unique_key() * 2;
+    my $R_unikey = $L_unikey + 1;
+    $l_node->unique_key($L_unikey);
+    $r_node->unique_key($R_unikey);
+    $tree->unikey_node()->{$L_unikey} = $l_node;
+    $tree->unikey_node()->{$R_unikey} = $r_node;
+    $tree->leaf_unikeys()->{$L_unikey} = 1;
+    $tree->leaf_unikeys()->{$R_unikey} = 1;
 
-  $self->is_leaf(0);		# $self is no longer a leaf.
-  delete $tree->leaf_unikeys()->{$self->unique_key()};
-  $tree->increment_n_leaves(); # the total number of leaves has increased by 1
+    $self->is_leaf(0);		# $self is no longer a leaf.
+    delete $tree->leaf_unikeys()->{$self->unique_key()};
+    $tree->increment_n_leaves(); # the total number of leaves has increased by 1
 
-  $self->is_joinable(1); # $self is now joinable - i.e. both its children are leaves.
-  $tree->joinable_unikeys()->{$self->unique_key()} = 1;
+    $self->is_joinable(1); # $self is now joinable - i.e. both its children are leaves.
+    $tree->joinable_unikeys()->{$self->unique_key()} = 1;
 
-  if (! $self->is_root()) {
-    $self->parent()->is_joinable(0); # parent of $self may or may not have been joinable before, but now it is not.
-    delete $tree->joinable_unikeys()->{$self->parent()->unique_key()};
-  }
-}
-
+    if (! $self->is_root()) {
+      $self->parent()->is_joinable(0); # parent of $self may or may not have been joinable before, but now it is not.
+      delete $tree->joinable_unikeys()->{$self->parent()->unique_key()};
+    }
+    #print "tree after split: ", $tree->newick(), "\n";
+  } # end of ACCEPTED branch
 }
 
 sub join_nodes{ # remove the two leaf-node children of this (joinable) node, leaving it as a leaf.
   my $self = shift;
-  my $q_ratio = shift; # split over joined
+  my $q_ratio = shift;		# split over joined
   my $L = $self->left();
   my $R = $self->right();
-  $self->left(undef);
-  $self->right(undef);
-  $self->is_leaf(1);
-print STDERR $self->tree()->newick(), "\n";
-  my $n = scalar @{$self->p_indices()};
+  #print "joining node: ", $self->unique_key(), "\n";
+  if (! defined $L or ! defined $R) {
+    die "attempting to join a node which has left or right child undef.\n";
+  }
+
+#print "join of uk: ", $self->unique_key(), " proposed.\n";
+ #  print  "before join. tree: ", $self->tree()->newick(), ". j-uks: ", join(",", keys %{$self->tree()->joinable_unikeys()}), "\n";
+ 
+ 
+ my $n = scalar @{$self->p_indices()};
   my $m_l = scalar @{$L->p_indices()};
   my $m_r =  scalar @{$R->p_indices()};
   my $N = $self->tree()->N();
   my $K = $self->tree()->n_leaves() - 1; # number of leaves in joined state
 
-my $ratio =   $q_ratio/pp_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
-  if($ratio >= 1 or rand() < $ratio){ # ACCEPT, and make the split.
-
-  delete $self->tree()->leaf_unikeys()->{$L->unique_key()};
-  delete $self->tree()->leaf_unikeys()->{$R->unique_key()};
-  $self->tree()->leaf_unikeys()->{$self->unique_key()} = 1;
-  $self->tree()->increment_n_leaves(-1);
-  delete $self->tree()->unikey_node()->{$L->unique_key()};
-  delete $self->tree()->unikey_node()->{$R->unique_key()};
-  delete $self->tree()->joinable_unikeys()->{$self->unique_key()};
-  if (! $self->is_root()) {
-    if ($self->sibling()->is_leaf()) { 
-      $self->parent()->is_joinable(1);
-      $self->tree()->joinable_unikeys()->{$self->parent()->unique_key()} = 1;
+  my $ratio =   $q_ratio/pp_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
+  if ($ratio >= 1 or rand() < $ratio) { # ACCEPT, and make the split.
+ $self->left(undef);
+  $self->right(undef);
+  $self->is_leaf(1);
+  #  print  "before join. tree: ", $self->tree()->newick(), ". j-uks: ", join(",", keys %{$self->tree()->joinable_unikeys()}), "\n";
+    delete $self->tree()->leaf_unikeys()->{$L->unique_key()};
+    delete $self->tree()->leaf_unikeys()->{$R->unique_key()};
+    $self->tree()->leaf_unikeys()->{$self->unique_key()} = 1;
+    $self->tree()->increment_n_leaves(-1);
+    delete $self->tree()->unikey_node()->{$L->unique_key()};
+    delete $self->tree()->unikey_node()->{$R->unique_key()};
+  #  print "after joining1. joinable keys: ", join(", ", keys %{$self->tree()->joinable_unikeys()}), "\n";
+    delete $self->tree()->joinable_unikeys()->{$self->unique_key()};
+ #   print $self->tree()->newick(), "\n";
+#    print "after joining2. joinable keys: ", join(", ", keys %{$self->tree()->joinable_unikeys()}), "\n";
+    if (! $self->is_root()) {
+      if ($self->sibling()->is_leaf()) {
+	$self->parent()->is_joinable(1);
+	$self->tree()->joinable_unikeys()->{$self->parent()->unique_key()} = 1;
+      }
     }
+# print "tree after join: ", $self->tree()->newick(), "\n";
   }
-}
 }
 
 sub newick{
   my $self = shift;
   my $n = scalar @{$self->p_indices()};
   if ($self->is_leaf()) {
-    #   return $self->unique_key() . ":" . $n;
+  #     return $self->unique_key() . ":" . $n;
     return "$n:1";
   } else {
-    #   return '(' . $self->left()->newick() . ',' . $self->right()->newick() . '):' . $n;
-    return '(' . $self->left()->newick() . ',' . $self->right()->newick() . '):1';
+       return '(' . $self->left()->newick() . ',' . $self->right()->newick() . ')' . $n . ':' . 1;
+   # return $self->unique_key() . '(' . $self->left()->newick() . ',' . $self->right()->newick() . '):' . "$n";
   }
 }
 
 sub pp_prob_ratio_split_over_joined{ # ratio of posterior probability in split state to p.p. in unsplit state
-# at present prior probs are just 1.
+  # at present prior probs are just 1.
   my $n = shift;	       # scalar @{$self->p_indices()};
   my $m_l = shift;	       # scalar @{$self->left()->p_indices()};
   my $m_r =  shift;	       #scalar @{$self->right()->p_indices()};
@@ -218,7 +230,7 @@ sub pp_prob_ratio_split_over_joined{ # ratio of posterior probability in split s
   # ratio = 1/((N+K)*K)  *  2^n/(n choose m) this is p(split)/p(unsplit)
   # N is total number of data points, K is (unsplit) number of leaves.
   my $ratio = 2**$n/n_choose_k($n, $m_l); 
-  $ratio /= (($N + $K) * $K);
+  $ratio *= $K**0.5 / ($N + $K) ;
   $ratio *= prior_prob_ratio_split_over_joined($K);
   return $ratio;
 }
@@ -235,8 +247,8 @@ sub n_choose_k{
 }
 
 sub prior_prob_ratio_split_over_joined{
-my $K = shift;
-return 2*(2*$K + 1)/($K + 1); # prior_prob(K) proportional to C_K (catalan number)
+  my $K = shift;
+  return 2*(2*$K + 1)/($K + 1); # prior_prob(K) proportional to C_K (catalan number)
 }
 
 1;
