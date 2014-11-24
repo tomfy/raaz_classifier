@@ -109,7 +109,7 @@ my $uk_to_split = $leaf_uks[$rand_leaf_index];
 # $leaf_to_split->split_node($l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices);
  
   }else{
-    $self->increment_weight(); 
+    $self->increment_weight();
   }
 }
 
@@ -180,4 +180,7 @@ sub add_tree{
   }				# loop over leaves
   $self->N($self->N() + $NplusK);
 }
+
+__PACKAGE__->meta->make_immutable;
+
 1;

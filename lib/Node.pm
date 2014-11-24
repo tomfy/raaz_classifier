@@ -89,11 +89,11 @@ has population => ( # number of data point which fall into this box
 		   default => 0,
 );
 
-sub BUILD {
-  my $self = shift;
-  #  $self->tree()->unikey_node()->{$self->unique_key()} = $self;
-#print "MCTree BUILD\n";
-}
+# sub BUILD {
+#   my $self = shift;
+#   #  $self->tree()->unikey_node()->{$self->unique_key()} = $self;
+# #print "MCTree BUILD\n";
+# }
 
 sub increment_population{
   my $self = shift;
@@ -126,7 +126,6 @@ sub split_node_mcmc{			# create pair of nodes
   my $split_q_index = shift @l_q_indices;
   my @r_q_indices = @l_q_indices;
 
-  # if (1) {
     my  ($l_p_indices, $r_p_indices) = $self->split_population($split_q_index);
 
     my $n = scalar @{$self->p_indices()};
@@ -138,7 +137,7 @@ sub split_node_mcmc{			# create pair of nodes
     # ratios are split over join
     my $pp_ratio = posterior_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
     my $random_number = rand();
-    my $accept = ($pp_ratio >= $q_ratio or $random_number*$q_ratio < $pp_ratio); # ACCEPT, and make the split.
+    my $accept = ($q_ratio <= $pp_ratio  or  $random_number*$q_ratio < $pp_ratio); # ACCEPT, and make the split.
     if($accept){
       # store old tree info in tree accumulator (to be implemented)
       $self->tree()->weight(1); # reset tree weight to 1
@@ -154,7 +153,6 @@ sub join_nodes_mcmc{ # remove the two leaf-node children of this (joinable) node
   my $q_ratio = shift;		# split over joined
   my $L = $self->left();
   my $R = $self->right();
-  #print "joining node: ", $self->unique_key(), "\n";
   if (! defined $L or ! defined $R) {
     die "attempting to join a node which has left or right child undef.\n";
   }
@@ -165,10 +163,8 @@ sub join_nodes_mcmc{ # remove the two leaf-node children of this (joinable) node
   my $N = $self->tree()->N();
   my $K = $self->tree()->n_leaves() - 1; # number of leaves in joined state
   my $pp_ratio = posterior_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
-  #  my $ratio =   $q_ratio/pp_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
   my $random_number = rand();
-  #  if ($ratio >= 1 or $random_number < $ratio) { # ACCEPT
-  my $accept = ($q_ratio >= $pp_ratio  or $random_number*$pp_ratio < $q_ratio);
+  my $accept = ($pp_ratio <= $q_ratio  or  $random_number*$pp_ratio < $q_ratio);
   if ($accept) {	# ACCEPT the proposed join
     # store old tree info in tree accumulator (to be implemented)
     $self->tree()->weight(1);
@@ -283,7 +279,7 @@ sub posterior_prob_ratio_split_over_joined{ # ratio of posterior probability in 
   return $ratio;
 }
 
-sub prior_prob_ratio_split_over_joined{
+sub prior_prob_ratio_split_over_joined{ # unsplit: K boxes, split: K+1 boxes.
   my $K = shift;
   return  1/$K**0.25;
   # 1/( 2*(2*$K + 1)/($K + 1) ); # prior_prob(K) inv proportional to C_K (catalan number)
@@ -301,6 +297,6 @@ sub n_choose_k{
   return $result;
 }
 
-
+__PACKAGE__->meta->make_immutable;
 
 1;

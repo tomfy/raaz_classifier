@@ -65,4 +65,6 @@ sub answer{ # return the answer with index $q_index of the data point with index
   return $self->data_point($p_index)->[$q_index];
 }
 
+__PACKAGE__->meta->make_immutable;
+
 1;

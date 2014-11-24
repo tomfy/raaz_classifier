@@ -71,4 +71,6 @@ sub newick{
   return $self->root()->newick();
 }
 
+__PACKAGE__->meta->make_immutable;
+
 1;
