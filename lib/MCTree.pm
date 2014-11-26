@@ -80,63 +80,64 @@ sub increment_weight{
 sub mcmc_step_split{		# split a leaf chosen at random
   my $self = shift;
   my @leaf_uks = keys %{$self->leaf_unikeys()};
-#print "1repeatable? ", $self->repeatable(), "\n";
-@leaf_uks = sort {$a <=> $b} @leaf_uks if($self->repeatable()); # this is to ensure runs are repeatable (if rng is seeded the same)
-#  print STDERR "leaf uks: ", join(", ", @leaf_uks), "\n";
-#  print STDERR $self->newick(), "\n";
+  @leaf_uks = sort {$a <=> $b} @leaf_uks if($self->repeatable()); # this is to ensure runs are repeatable (if rng is seeded the same)
   my $n_leaves = scalar @leaf_uks;
 
-    my $rand_leaf_index = int (rand() * $n_leaves );
-#print "In mcmc_step_split. rand leaf index: $rand_leaf_index \n";
-my $uk_to_split = $leaf_uks[$rand_leaf_index];
-#print "leaf uks: ", join(", ", @leaf_uks), "\n";
-#print "rand leaf index: $rand_leaf_index; uk to split: $uk_to_split \n";
+  my $rand_leaf_index = int (rand() * $n_leaves );
+  my $uk_to_split = $leaf_uks[$rand_leaf_index];
   my $leaf_to_split = $self->unikey_node()->{$uk_to_split };
 
   my @joinable_uks = keys %{$self->joinable_unikeys()};
   my $n_joinable_back = scalar @joinable_uks;
   $n_joinable_back++ if( $leaf_to_split->is_root()  or  ! $leaf_to_split->parent()->is_joinable() ); # this is the number of possible joins AFTER the split.
-  my $q_split = 1/$n_leaves;
-  my $q_join_back= 1/$n_joinable_back;
-#  my $q_ratio_split_over_join = $q_split/$q_join;
-#print "before split. leaf_uks: ", join(", ", @leaf_uks), " uk to split: ", $uk_to_split, "\n";
-#print "before split. joinable_uks: ", join(", ", @joinable_uks), "\n";
+  # my $q_split = 1/$n_leaves;
+  # my $q_join_back= 1/$n_joinable_back;
+my $q_ratio = $n_joinable_back/$n_leaves;
+  #  my $q_ratio_split_over_join = $q_split/$q_join;
+  #print "before split. leaf_uks: ", join(", ", @leaf_uks), " uk to split: ", $uk_to_split, "\n";
+  #print "before split. joinable_uks: ", join(", ", @joinable_uks), "\n";
   #print "tree before split: ", $self->newick(), "\n";
 
-#print STDERR "in mcmc_step_split. n leaves: $n_leaves, n joinable (back): $n_joinable_back \n";
-  my ($accept_split, $l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices) = $leaf_to_split->split_node_mcmc($q_split/$q_join_back);
-  if($accept_split){
-# $leaf_to_split->split_node($l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices);
- 
-  }else{
-    $self->increment_weight();
-  }
+  #print STDERR "in mcmc_step_split. n leaves: $n_leaves, n joinable (back): $n_joinable_back \n";
+  # if (0) {
+  #   my ($accept_split, $l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices) = $leaf_to_split->split_node_mcmc($q_split/$q_join_back);
+  #   if ($accept_split) {
+  #     $leaf_to_split->split_node($l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices);
+  #     $self->weight(1);
+  #   } else {
+  #     $self->increment_weight();
+  #   }
+  # } else {
+    my ($pp_ratio, $l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices) = $leaf_to_split->split_node_pp_ratio();
+    my $random_number = rand();
+    if ($q_ratio <= $pp_ratio  or  $random_number*$q_ratio < $pp_ratio) { # ACCEPT, and make the split.
+      $leaf_to_split->split_node($l_q_indices, $r_q_indices, $l_p_indices, $r_p_indices);
+      $self->weight(1);
+    } else {
+      $self->increment_weight();
+    }
+ # }
 }
 
 sub mcmc_step_join{ # choose a joinable node (parent of two leaves) at random, and join the two child leaves.
   my $self = shift;
   my @joinable_uks = keys %{$self->joinable_unikeys()};
-#print "2repeatable?  ", $self->repeatable()? '1' : '0', "\n";
-@joinable_uks = sort {$a <=> $b} @joinable_uks  if($self->repeatable());
-#  print STDERR "joinable uks: ", join(", ", @joinable_uks), "\n";
+  @joinable_uks = sort {$a <=> $b} @joinable_uks  if($self->repeatable());
   my $n_joinable = scalar @joinable_uks;
   # choose one of the joinable nodes uniformly at random:
-   my $rand_join_index = int (rand() * $n_joinable );
-#print "In mcmc_step_join. rand join index: $rand_join_index \n";
-my $uk_to_join = $joinable_uks[$rand_join_index];
-#print "rand join index: $rand_join_index; uk to join: $uk_to_join \n";
+  my $rand_join_index = int (rand() * $n_joinable );
+  my $uk_to_join = $joinable_uks[$rand_join_index];
   my $node_to_join = $self->unikey_node()->{$uk_to_join};
-  my $q_join = 1/$n_joinable;
-my $n_leaves_back = $self->n_leaves() - 1; # number of leaves AFTER join (= possible splits at that point)
-my $q_split_back = 1/$n_leaves_back;
-#print STDERR "before join. joinable_uks: ", join(", ", @joinable_uks), "  uk to join: ", $uk_to_join, "\n";
-#print STDERR "tree before join: ", $self->newick(), "\n";
-#print STDERR "in mcmc_step_join. n leaves (back): $n_leaves_back, n joinable: $n_joinable \n";
-#my $q_ratio_join_over_split = $q_joinable/$q_split;
-  my $accept_join = $node_to_join->join_nodes_mcmc($q_split_back/$q_join);
-  if($accept_join){
-    # store the 
-  }else{
+#  my $q_join = 1/$n_joinable;
+  my $n_leaves_back = $self->n_leaves() - 1; # number of leaves AFTER join (= possible splits at that point)
+#  my $q_split_back = 1/$n_leaves_back;
+ my $q_ratio = $n_joinable/$n_leaves_back; # $q_split_back/$q_join;
+ my $pp_ratio = $node_to_join->join_nodes_pp_ratio();
+ my $random_number = rand();
+  if ( $pp_ratio <= $q_ratio  or  $random_number*$pp_ratio < $q_ratio ) { # ACCEPT the proposed join.
+    $node_to_join->join_nodes();
+    $self->weight(1);
+  } else {
     $self->increment_weight();
   }
 }
@@ -180,6 +181,8 @@ sub add_tree{
   }				# loop over leaves
   $self->N($self->N() + $NplusK);
 }
+
+
 
 __PACKAGE__->meta->make_immutable;
 
