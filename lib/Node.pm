@@ -115,28 +115,6 @@ sub split_population{ # arg is a q index; return 2 array refs with the p_indices
   return (\@l_p_indices, \@r_p_indices);
 }
 
-# sub split_node_mcmc{			# create pair of nodes
-#   my $self = shift;
-#   my $q_ratio = shift;
-#   my @l_q_indices =  @{$self->q_indices()};
-#   my $split_q_index = shift @l_q_indices;
-#   my @r_q_indices = @l_q_indices;
-
-#     my  ($l_p_indices, $r_p_indices) = $self->split_population($split_q_index);
-
-#     my $n = scalar @{$self->p_indices()};
-#     my $m_l = scalar @$l_p_indices;
-#     my $m_r =  scalar @$r_p_indices;
-#     my $N = $self->tree()->N();
-#     my $K = $self->tree()->n_leaves();
-
-#     # ratios are split over join
-#     my $pp_ratio = posterior_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
-#     my $random_number = rand();
-#     my $accept = ($q_ratio <= $pp_ratio  or  $random_number*$q_ratio < $pp_ratio); # ACCEPT, and make the split.
-# return ($accept, \@l_q_indices, \@r_q_indices, $l_p_indices, $r_p_indices);
-# }
-
 sub split_node_pp_ratio{
   my $self = shift;
   my $q_ratio = shift;
@@ -156,28 +134,6 @@ sub split_node_pp_ratio{
   my $pp_ratio = posterior_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
   return ($pp_ratio, \@l_q_indices, \@r_q_indices, $l_p_indices, $r_p_indices);
 }
-
-# sub join_nodes_mcmc{ # remove the two leaf-node children of this (joinable) node, leaving it as a leaf.
-#   my $self = shift;
-#   my $q_ratio = shift;		# split over joined
-#   my $L = $self->left();
-#   my $R = $self->right();
-# # print STDERR "self, L, R, addresses: ", $self->unique_key(), "   ", $L->unique_key(), "   ", $R->unique_key(), "\n";
-#   if (! defined $L or ! defined $R) {
-#     die "attempting to join a node which has left or right child undef.\n";
-#   }
-
-#   my $n = scalar @{$self->p_indices()};
-#   my $m_l = scalar @{$L->p_indices()};
-#   my $m_r =  scalar @{$R->p_indices()};
-#   my $N = $self->tree()->N();
-#   my $K = $self->tree()->n_leaves() - 1; # number of leaves in joined state
-
-#   my $pp_ratio = posterior_prob_ratio_split_over_joined($n, $m_l, $m_r, $N, $K);
-#   my $random_number = rand();
-#   my $accept = ($pp_ratio <= $q_ratio  or  $random_number*$pp_ratio < $q_ratio);
-#   return $accept;
-# }
 
 sub join_nodes_pp_ratio{ #
   my $self = shift;
